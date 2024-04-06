@@ -1,0 +1,29 @@
+# Ignore Python cache directories
+__pycache__/
+
+# Ignore environment-specific files
+.env
+.env.*
+
+# Ignore local development settings
+local_settings.py
+
+# Ignore system-specific Python artifacts
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore IDE or editor-specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Ignore logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Ignore package dependencies
+venv/
+env/
