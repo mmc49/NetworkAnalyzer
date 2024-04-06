@@ -1,41 +1,41 @@
-package tcp.examples
+import socket
+import threading
+import json
+from datetime import datetime
 
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.PrintWriter
-import java.net.Socket
+# Server settings
+HOST = '0.0.0.0'
+PORT = 12345
 
-internal class Client {
-    lateinit var client: Socket
-    lateinit var output: PrintWriter
-    lateinit var input: BufferedReader
+def handle_client(conn, addr):
+    print(f"Connected by {addr}")
+    with conn:
+        while True:
+            data = conn.recv(1024)
+            if not data:
+                break
+            # Convert bytes data to dictionary
+            cell_data = json.loads(data.decode())
+            print(f"Received data from {addr}: {cell_data}")
+            # Save to database or file here (not implemented)
+            conn.sendall(b"Data received")
+    print(f"Connection with {addr} closed")
 
-    fun startConnection(host: String, port: Int) {
-        client = Socket(host, port)
-        output = PrintWriter(client.getOutputStream(), true)
-        input = BufferedReader(InputStreamReader(client.inputStream))
-        println("Client connected : ${client.inetAddress.hostAddress}")
-    }
+def start_server():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((HOST, PORT))
+    server.listen()
+    print(f"Server listening on {HOST}:{PORT}")
 
-    fun sendMessage(message: String): String {
-        println("Client sending [$message]")
-        output.println(message)
-        return input.readLine()
-    }
+    try:
+        while True:
+            conn, addr = server.accept()
+            thread = threading.Thread(target=handle_client, args=(conn, addr))
+            thread.start()
+            print(f"Active connections: {threading.activeCount() - 1}")
+    except KeyboardInterrupt:
+        print("Server is shutting down...")
+        server.close()
 
-    fun stopConnection() {
-        client.close()
-        input.close()
-        output.close()
-        println("${client.inetAddress.hostAddress} closed the connection")
-    }
-}
-
-fun main() {
-    val client = Client()
-    client.startConnection("127.0.0.1", 9999)
-    client.sendMessage("Hello server")
-    client.sendMessage("Hello from the client")
-    //Thread.sleep(2000)
-    client.stopConnection()
-}
+if __name__ == '__main__':
+    start_server()
