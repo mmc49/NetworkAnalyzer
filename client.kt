@@ -1,41 +1,78 @@
-import socket
-import threading
-import json
-from datetime import datetime
+import android.app.Service;
+import android.content.Intent;
+import android.os.IBinder;
+import android.os.Handler;
+import org.json.JSONObject;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
-# Server settings
-HOST = '0.0.0.0'
-PORT = 12345
+public class NetworkCellService extends Service {
+    private Handler handler = new Handler();
+    private final int PORT = 12345;
+    private final String SERVER_IP = "192.168.1.100"; // Change to your server IP
+    private Socket socket;
+    private PrintWriter out;
 
-def handle_client(conn, addr):
-    print(f"Connected by {addr}")
-    with conn:
-        while True:
-            data = conn.recv(1024)
-            if not data:
-                break
-            # Convert bytes data to dictionary
-            cell_data = json.loads(data.decode())
-            print(f"Received data from {addr}: {cell_data}")
-            # Save to database or file here (not implemented)
-            conn.sendall(b"Data received")
-    print(f"Connection with {addr} closed")
+    private Runnable sendDataRunnable = new Runnable() {
+        @Override
+        public void run() {
+            collectAndSendData();
+            handler.postDelayed(this, 10000); // Schedule every 10 seconds
+        }
+    };
 
-def start_server():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((HOST, PORT))
-    server.listen()
-    print(f"Server listening on {HOST}:{PORT}")
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        handler.post(sendDataRunnable);
+        return START_STICKY;
+    }
 
-    try:
-        while True:
-            conn, addr = server.accept()
-            thread = threading.Thread(target=handle_client, args=(conn, addr))
-            thread.start()
-            print(f"Active connections: {threading.activeCount() - 1}")
-    except KeyboardInterrupt:
-        print("Server is shutting down...")
-        server.close()
+    private void collectAndSendData() {
+        // Collect cell info using TelephonyManager or other APIs
+        try {
+            JSONObject data = new JSONObject();
+            data.put("operator", "Example Operator");
+            data.put("signal_power", -50);
+            data.put("sinr", 10.0);
+            data.put("network_type", "4G");
+            data.put("frequency_band", "20");
+            data.put("cell_id", "12345-67890");
+            data.put("timestamp", new SimpleDateFormat("dd MMM yyyy hh:mm a", Locale.ENGLISH).format(new Date()));
 
-if __name__ == '__main__':
-    start_server()
+            sendDataToServer(data.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendDataToServer(String data) {
+        try {
+            socket = new Socket(SERVER_IP, PORT);
+            out = new PrintWriter(socket.getOutputStream(), true);
+            out.println(data);
+            socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        handler.removeCallbacks(sendDataRunnable);
+        try {
+            if (socket != null) socket.close();
+            if (out != null) out.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        super.onDestroy();
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+}
